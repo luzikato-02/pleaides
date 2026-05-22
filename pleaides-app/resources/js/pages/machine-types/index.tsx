@@ -1,7 +1,10 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { FilterBar } from '@/components/filter-bar';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
+import { useDataFilter } from '@/hooks/use-data-filter';
+import { downloadCsv } from '@/lib/export-csv';
 import { create, edit } from '@/routes/machine-types';
 
 type MachineType = {
@@ -9,10 +12,15 @@ type MachineType = {
     type_name: string;
     description: string | null;
     machines_count: number;
-    created_at: string;
 };
 
 export default function MachineTypesIndex({ machineTypes }: { machineTypes: MachineType[] }) {
+    const { filtered, query, setQuery, clearAll, hasActiveFilters } = useDataFilter(machineTypes, {
+        searchFn: (t, q) =>
+            t.type_name.toLowerCase().includes(q) ||
+            (t.description?.toLowerCase().includes(q) ?? false),
+    });
+
     const handleDelete = (id: number, name: string) => {
         if (!window.confirm(`Delete machine type "${name}"? This cannot be undone.`)) return;
         router.delete(`/machine-types/${id}`);
@@ -33,12 +41,27 @@ export default function MachineTypesIndex({ machineTypes }: { machineTypes: Mach
                     </Link>
                 </div>
 
-                {machineTypes.length === 0 ? (
+                <FilterBar
+                    search={{ value: query, onChange: setQuery, placeholder: 'Search by name or description…' }}
+                    resultCount={filtered.length}
+                    totalCount={machineTypes.length}
+                    onClear={clearAll}
+                    hasActiveFilters={hasActiveFilters}
+                    onExport={() =>
+                        downloadCsv('machine-types', [
+                            { header: 'Name', value: (r) => r.type_name },
+                            { header: 'Description', value: (r) => r.description },
+                            { header: 'Machines', value: (r) => r.machines_count },
+                        ], filtered)
+                    }
+                />
+
+                {filtered.length === 0 ? (
                     <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
-                        No machine types yet.{' '}
-                        <Link href={create()} className="underline">
-                            Add the first one.
-                        </Link>
+                        {hasActiveFilters ? 'No machine types match your filters.' : 'No machine types yet.'}{' '}
+                        {!hasActiveFilters && (
+                            <Link href={create()} className="underline">Add the first one.</Link>
+                        )}
                     </div>
                 ) : (
                     <div className="overflow-hidden rounded-lg border">
@@ -52,7 +75,7 @@ export default function MachineTypesIndex({ machineTypes }: { machineTypes: Mach
                                 </tr>
                             </thead>
                             <tbody>
-                                {machineTypes.map((type) => (
+                                {filtered.map((type) => (
                                     <tr key={type.id} className="border-t">
                                         <td className="px-4 py-3 font-medium">{type.type_name}</td>
                                         <td className="px-4 py-3 text-muted-foreground">{type.description ?? '—'}</td>
@@ -60,9 +83,7 @@ export default function MachineTypesIndex({ machineTypes }: { machineTypes: Mach
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex justify-end gap-2">
                                                 <Link href={edit(type)}>
-                                                    <Button variant="outline" size="sm">
-                                                        <Pencil className="h-3 w-3" />
-                                                    </Button>
+                                                    <Button variant="outline" size="sm"><Pencil className="h-3 w-3" /></Button>
                                                 </Link>
                                                 <Button
                                                     variant="outline"

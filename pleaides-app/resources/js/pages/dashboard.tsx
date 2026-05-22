@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { AlertTriangle, CheckCircle, Clock, HelpCircle, Info } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { FilterBar } from '@/components/filter-bar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -12,6 +13,8 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import { useDataFilter } from '@/hooks/use-data-filter';
+import { downloadCsv } from '@/lib/export-csv';
 import { index as machinesIndex } from '@/routes/machines';
 import { create as logCleaning } from '@/routes/cleaning-records';
 
@@ -181,6 +184,56 @@ function MachineDetailDialog({ machine }: { machine: Machine }) {
 export default function Dashboard({ machines, grouped, counts }: Props) {
     const totalActive = counts.overdue + counts.due_soon + counts.ok + counts.no_record;
 
+    const typeOptions = useMemo(
+        () =>
+            [...new Set(machines.map((m) => m.machine_type?.type_name).filter(Boolean))]
+                .sort()
+                .map((t) => ({ value: t!, label: t! })),
+        [machines],
+    );
+
+    const locationOptions = useMemo(
+        () =>
+            [...new Set(machines.map((m) => m.location).filter(Boolean))]
+                .sort()
+                .map((l) => ({ value: l!, label: l! })),
+        [machines],
+    );
+
+    const { filtered, query, setQuery, filterValues, setFilter, clearAll, hasActiveFilters } =
+        useDataFilter(machines, {
+            searchFn: (m, q) =>
+                m.machine_name.toLowerCase().includes(q) ||
+                m.machine_code.toLowerCase().includes(q) ||
+                (m.location?.toLowerCase().includes(q) ?? false) ||
+                (m.latest_cleaning_record?.performed_by_leader?.toLowerCase().includes(q) ?? false),
+            filters: [
+                {
+                    key: 'type',
+                    label: 'Type',
+                    options: typeOptions,
+                    match: (m, v) => m.machine_type?.type_name === v,
+                },
+                {
+                    key: 'location',
+                    label: 'Location',
+                    options: locationOptions,
+                    match: (m, v) => m.location === v,
+                },
+                {
+                    key: 'due_status',
+                    label: 'Status',
+                    options: [
+                        { value: 'OK', label: 'OK' },
+                        { value: 'Due soon', label: 'Due Soon' },
+                        { value: 'Overdue', label: 'Overdue' },
+                        { value: 'No Record', label: 'No Record' },
+                    ],
+                    match: (m, v) => m.due_status === v,
+                },
+            ],
+        });
+
     return (
         <>
             <Head title="Dashboard" />
@@ -227,6 +280,39 @@ export default function Dashboard({ machines, grouped, counts }: Props) {
                 ) : (
                     <div>
                         <h2 className="mb-3 font-medium">All Machines</h2>
+
+                        <FilterBar
+                            search={{ value: query, onChange: setQuery, placeholder: 'Search by name, code, location, or leader…' }}
+                            selects={[
+                                { key: 'type', label: 'Type', value: filterValues.type ?? '', options: typeOptions, onChange: (v) => setFilter('type', v) },
+                                { key: 'location', label: 'Location', value: filterValues.location ?? '', options: locationOptions, onChange: (v) => setFilter('location', v) },
+                                { key: 'due_status', label: 'Status', value: filterValues.due_status ?? '', options: [
+                                    { value: 'OK', label: 'OK' },
+                                    { value: 'Due soon', label: 'Due Soon' },
+                                    { value: 'Overdue', label: 'Overdue' },
+                                    { value: 'No Record', label: 'No Record' },
+                                ], onChange: (v) => setFilter('due_status', v) },
+                            ]}
+                            resultCount={filtered.length}
+                            totalCount={machines.length}
+                            onClear={clearAll}
+                            hasActiveFilters={hasActiveFilters}
+                            onExport={() =>
+                                downloadCsv('machines-compliance', [
+                                    { header: 'Machine', value: (r) => r.machine_name },
+                                    { header: 'Code', value: (r) => r.machine_code },
+                                    { header: 'Type', value: (r) => r.machine_type?.type_name },
+                                    { header: 'Location', value: (r) => r.location },
+                                    { header: 'Last Cleaned', value: (r) => r.latest_cleaning_record?.cleaning_date },
+                                    { header: 'Days Since Prev', value: (r) => r.latest_cleaning_record?.duration_since_last },
+                                    { header: 'Last Team', value: (r) => r.latest_cleaning_record?.performed_by_group?.group_name },
+                                    { header: 'Last Leader', value: (r) => r.latest_cleaning_record?.performed_by_leader },
+                                    { header: 'Next Due', value: (r) => r.latest_cleaning_record?.next_due_date },
+                                    { header: 'Status', value: (r) => r.due_status },
+                                ], filtered)
+                            }
+                        />
+
                         <div className="overflow-x-auto rounded-lg border">
                             <table className="w-full text-sm">
                                 <thead className="bg-muted/50">
@@ -244,7 +330,14 @@ export default function Dashboard({ machines, grouped, counts }: Props) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {machines.map((machine) => {
+                                    {filtered.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">
+                                                No machines match your filters.
+                                            </td>
+                                        </tr>
+                                    ) : null}
+                                    {filtered.map((machine) => {
                                         const latest = machine.latest_cleaning_record;
                                         return (
                                             <tr key={machine.id} className="border-t">

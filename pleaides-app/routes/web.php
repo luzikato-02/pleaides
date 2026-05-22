@@ -18,6 +18,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('machines', MachineController::class);
     Route::resource('cleaning-cycles', CleaningCycleController::class);
     Route::resource('shift-groups', ShiftGroupController::class);
+    Route::get('cleaning-records/export', [CleaningRecordController::class, 'export'])->name('cleaning-records.export');
     Route::resource('cleaning-records', CleaningRecordController::class)->only(['index', 'create', 'store']);
     Route::resource('stakeholders', StakeholderController::class);
 
