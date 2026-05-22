@@ -13,9 +13,12 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
+        $schedule->command('cleaning:send-alerts')->dailyAt('07:00');
+    })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
-
+        $middleware->trustProxies(at: '*');
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,
