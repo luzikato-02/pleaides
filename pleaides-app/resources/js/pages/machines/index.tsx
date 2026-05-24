@@ -17,6 +17,7 @@ type Machine = {
     status: string;
     due_status: string;
     machine_type: { type_name: string } | null;
+    production_area: { area_name: string } | null;
     latest_cleaning_record: { next_due_date: string } | null;
 };
 
@@ -44,6 +45,14 @@ export default function MachinesIndex({ machines }: { machines: Machine[] }) {
         [machines],
     );
 
+    const productionAreaOptions = useMemo(
+        () =>
+            [...new Set(machines.map((m) => m.production_area?.area_name).filter(Boolean))]
+                .sort()
+                .map((a) => ({ value: a!, label: a! })),
+        [machines],
+    );
+
     const { filtered, query, setQuery, filterValues, setFilter, clearAll, hasActiveFilters } =
         useDataFilter(machines, {
             searchFn: (m, q) =>
@@ -62,6 +71,12 @@ export default function MachinesIndex({ machines }: { machines: Machine[] }) {
                     label: 'Location',
                     options: locationOptions,
                     match: (m, v) => m.location === v,
+                },
+                {
+                    key: 'production_area',
+                    label: 'Area',
+                    options: productionAreaOptions,
+                    match: (m, v) => m.production_area?.area_name === v,
                 },
                 {
                     key: 'status',
@@ -112,6 +127,7 @@ export default function MachinesIndex({ machines }: { machines: Machine[] }) {
                     selects={[
                         { key: 'type', label: 'Type', value: filterValues.type ?? '', options: typeOptions, onChange: (v) => setFilter('type', v) },
                         { key: 'location', label: 'Location', value: filterValues.location ?? '', options: locationOptions, onChange: (v) => setFilter('location', v) },
+                        { key: 'production_area', label: 'Area', value: filterValues.production_area ?? '', options: productionAreaOptions, onChange: (v) => setFilter('production_area', v) },
                         { key: 'status', label: 'Status', value: filterValues.status ?? '', options: [
                             { value: 'Active', label: 'Active' },
                             { value: 'Inactive', label: 'Inactive' },
@@ -133,6 +149,7 @@ export default function MachinesIndex({ machines }: { machines: Machine[] }) {
                             { header: 'Code', value: (r) => r.machine_code },
                             { header: 'Name', value: (r) => r.machine_name },
                             { header: 'Type', value: (r) => r.machine_type?.type_name },
+                            { header: 'Production Area', value: (r) => r.production_area?.area_name },
                             { header: 'Location', value: (r) => r.location },
                             { header: 'Status', value: (r) => r.status },
                             { header: 'Next Due', value: (r) => r.latest_cleaning_record?.next_due_date },
@@ -154,6 +171,7 @@ export default function MachinesIndex({ machines }: { machines: Machine[] }) {
                                     <th className="px-4 py-3 text-left font-medium">Code</th>
                                     <th className="px-4 py-3 text-left font-medium">Name</th>
                                     <th className="px-4 py-3 text-left font-medium">Type</th>
+                                    <th className="px-4 py-3 text-left font-medium">Area</th>
                                     <th className="px-4 py-3 text-left font-medium">Location</th>
                                     <th className="px-4 py-3 text-left font-medium">Status</th>
                                     <th className="px-4 py-3 text-left font-medium">Next Due</th>
@@ -167,6 +185,7 @@ export default function MachinesIndex({ machines }: { machines: Machine[] }) {
                                         <td className="px-4 py-3 font-mono text-xs">{machine.machine_code}</td>
                                         <td className="px-4 py-3 font-medium">{machine.machine_name}</td>
                                         <td className="px-4 py-3 text-muted-foreground">{machine.machine_type?.type_name ?? '—'}</td>
+                                        <td className="px-4 py-3 text-muted-foreground">{machine.production_area?.area_name ?? '—'}</td>
                                         <td className="px-4 py-3 text-muted-foreground">{machine.location ?? '—'}</td>
                                         <td className="px-4 py-3">
                                             <Badge variant={machine.status === 'Active' ? 'default' : 'secondary'}>{machine.status}</Badge>

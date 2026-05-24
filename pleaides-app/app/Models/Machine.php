@@ -10,13 +10,23 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Machine extends Model
 {
-    protected $fillable = ['machine_code', 'machine_name', 'type_id', 'location', 'status'];
+    protected $fillable = ['machine_code', 'machine_name', 'type_id', 'production_area_id', 'location', 'status'];
 
     protected $appends = ['due_status'];
 
     public function machineType(): BelongsTo
     {
         return $this->belongsTo(MachineType::class, 'type_id');
+    }
+
+    public function productionArea(): BelongsTo
+    {
+        return $this->belongsTo(ProductionArea::class);
+    }
+
+    public function weavingStandard(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(WeavingMachineStandard::class);
     }
 
     public function cleaningRecords(): HasMany

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Machine;
 use App\Models\MachineType;
+use App\Models\ProductionArea;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -13,7 +14,7 @@ class MachineController extends Controller
 {
     public function index(): Response
     {
-        $machines = Machine::with(['machineType', 'latestCleaningRecord'])
+        $machines = Machine::with(['machineType', 'productionArea', 'latestCleaningRecord'])
             ->latest()
             ->get()
             ->map(fn ($m) => array_merge($m->toArray(), ['due_status' => $m->due_status]));
@@ -27,6 +28,7 @@ class MachineController extends Controller
     {
         return Inertia::render('machines/form', [
             'machineTypes' => MachineType::orderBy('type_name')->get(['id', 'type_name']),
+            'productionAreas' => ProductionArea::orderBy('area_name')->get(['id', 'area_name']),
         ]);
     }
 
@@ -36,11 +38,12 @@ class MachineController extends Controller
             'machine_code' => 'required|string|max:255|unique:machines',
             'machine_name' => 'required|string|max:255',
             'type_id' => 'required|exists:machine_types,id',
+            'production_area_id' => 'nullable|exists:production_areas,id',
             'location' => 'nullable|string|max:255',
             'status' => 'required|in:Active,Inactive,Decommissioned',
         ]);
 
-        Machine::create($request->only('machine_code', 'machine_name', 'type_id', 'location', 'status'));
+        Machine::create($request->only('machine_code', 'machine_name', 'type_id', 'production_area_id', 'location', 'status'));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Machine created.']);
 
@@ -52,6 +55,7 @@ class MachineController extends Controller
         return Inertia::render('machines/form', [
             'machine' => $machine,
             'machineTypes' => MachineType::orderBy('type_name')->get(['id', 'type_name']),
+            'productionAreas' => ProductionArea::orderBy('area_name')->get(['id', 'area_name']),
         ]);
     }
 
@@ -61,11 +65,12 @@ class MachineController extends Controller
             'machine_code' => 'required|string|max:255|unique:machines,machine_code,'.$machine->id,
             'machine_name' => 'required|string|max:255',
             'type_id' => 'required|exists:machine_types,id',
+            'production_area_id' => 'nullable|exists:production_areas,id',
             'location' => 'nullable|string|max:255',
             'status' => 'required|in:Active,Inactive,Decommissioned',
         ]);
 
-        $machine->update($request->only('machine_code', 'machine_name', 'type_id', 'location', 'status'));
+        $machine->update($request->only('machine_code', 'machine_name', 'type_id', 'production_area_id', 'location', 'status'));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Machine updated.']);
 

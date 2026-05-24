@@ -8,11 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { index, store, update } from '@/routes/machines';
 
 type MachineType = { id: number; type_name: string };
+type ProductionArea = { id: number; area_name: string };
 type Machine = {
     id: number;
     machine_code: string;
     machine_name: string;
     type_id: number;
+    production_area_id: number | null;
     location: string | null;
     status: string;
 };
@@ -20,9 +22,11 @@ type Machine = {
 export default function MachineForm({
     machine,
     machineTypes,
+    productionAreas,
 }: {
     machine?: Machine;
     machineTypes: MachineType[];
+    productionAreas: ProductionArea[];
 }) {
     const isEditing = !!machine;
 
@@ -30,6 +34,7 @@ export default function MachineForm({
         machine_code: machine?.machine_code ?? '',
         machine_name: machine?.machine_name ?? '',
         type_id: machine?.type_id?.toString() ?? '',
+        production_area_id: machine?.production_area_id?.toString() ?? '',
         location: machine?.location ?? '',
         status: machine?.status ?? 'Active',
     });
@@ -93,6 +98,26 @@ export default function MachineForm({
                             </SelectContent>
                         </Select>
                         <InputError message={errors.type_id} />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label>Production Area</Label>
+                        <Select
+                            value={data.production_area_id}
+                            onValueChange={(v) => setData('production_area_id', v)}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select area (optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {productionAreas.map((a) => (
+                                    <SelectItem key={a.id} value={a.id.toString()}>
+                                        {a.area_name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <InputError message={errors.production_area_id} />
                     </div>
 
                     <div className="grid gap-2">
